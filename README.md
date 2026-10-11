@@ -141,6 +141,7 @@ Web UI en `http://localhost:8080/` y API OpenAI-compatible en
 | `CACHE_TYPE_V` | `q8_0` | Tipo del KV cache (V). |
 | `FLASH_ATTN` | `on` | `on` \| `off` \| `auto`. Requerido para KV cuantizado. |
 | `LAZY_MODE` | `off` | `on` \| `auto` \| `off`. Lectura de tensores grandes desde disco (forzado a `off` en modelos PLE con `PLE_TO_RAM=true`). |
+| `LOAD_MODE` | *(vacío)* | `auto` \| `none` \| `mmap` \| `mlock` \| `mmap+mlock` \| `dio`. Vacío = `auto`. Con `PLE_TO_RAM=true` se usa `none` automáticamente (evita la penalización de `-ot` con mmap). |
 | `CPU_MOE` | `false` | `true` = todos los expertos MoE a CPU (opt-in). |
 | `N_CPU_MOE` | `0` | `N` > 0 = expertos de las primeras N capas a CPU (opt-in). |
 | `MOE_CACHE_MIB` | `0` | Caché en GPU (MiB) para expertos "calientes" con offload a CPU. |
@@ -158,7 +159,8 @@ Detalle de cada flag de llama.cpp equivalente en [`docs/flags.md`](docs/flags.md
 - **Parte activa → VRAM**: `N_GPU_LAYERS` (`-ngl`). Ponlo a un número menor si no
   cabe todo en VRAM.
 - **PLE → RAM** (Gemma 4 E2B/E4B): `PLE_TO_RAM=true` añade
-  `-ot per_layer_token_embd=CPU,per_layer_model_proj=CPU` y fuerza `--lazy-mode off`
+  `-ot per_layer_token_embd=CPU,per_layer_model_proj=CPU`, fuerza `--lazy-mode off`
+  y usa `--load-mode none` (evita la penalización de los overrides a CPU con mmap)
   para que la tabla quede **residente en RAM** (RAM ≫ disco).
 - **mmproj → RAM**: `MMPROJ_TO_RAM=true` añade `--no-mmproj-offload`.
 - **MoE → VRAM** por defecto. Si no te cabe el modelo, activa `N_CPU_MOE` (o

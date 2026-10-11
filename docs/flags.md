@@ -40,6 +40,7 @@ en el contenedor.
 | `LLAMA_ARG_CACHE_TYPE_K` | `-ctk, --cache-type-k` | Tipo del KV cache (K). `q8_0` ahorra ~mitad de VRAM del KV. | `.env` (`CACHE_TYPE_K`) |
 | `LLAMA_ARG_CACHE_TYPE_V` | `-ctv, --cache-type-v` | Tipo del KV cache (V). | `.env` (`CACHE_TYPE_V`) |
 | `LLAMA_ARG_LAZY_MODE` | `-lzm, --lazy-mode` | `on`/`auto`/`off`. `on` lee de disco bajo demanda los tensores grandes (p. ej. PLE); `off` los mantiene residentes. | `.env` (`LAZY_MODE`) |
+| `LLAMA_ARG_LOAD_MODE` | `-lm, --load-mode` | `auto`/`none`/`mmap`/`mlock`/`mmap+mlock`/`dio`. `none` = leer a RAM sin mmap (evita la penalización de `-ot` a CPU con mmap). | `.env` (`LOAD_MODE`; `none` automático en PLE) |
 
 Valores válidos de KV cache: `f32, f16, bf16, q8_0, q4_0, q4_1, iq4_nl, q5_0, q5_1`.
 

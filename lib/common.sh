@@ -40,6 +40,7 @@ fi
 : "${CACHE_TYPE_V:=q8_0}"
 : "${FLASH_ATTN:=on}"
 : "${LAZY_MODE:=off}"
+: "${LOAD_MODE:=}"
 : "${CPU_MOE:=false}"
 : "${N_CPU_MOE:=0}"
 : "${MOE_CACHE_MIB:=0}"
@@ -225,12 +226,16 @@ llama_write_model_env() {
     # PLE a RAM: además del -ot, forzamos lazy-mode=off para que las tablas
     # queden residentes en memoria (RAM >> disco). Si no, con LAZY_MODE=auto/on
     # llama.cpp las leería de disco bajo demanda, justo lo que se quiere evitar.
-    local lazy="$LAZY_MODE"
+    # Los overrides a CPU no se llevan bien con mmap: usamos --load-mode none
+    # (salvo que el usuario fije LOAD_MODE) para evitar la penalización.
+    local lazy="$LAZY_MODE" load_mode="$LOAD_MODE"
     if [[ "${PLE_MODEL:-false}" == true && "$PLE_TO_RAM" == true ]]; then
         L+=("LLAMA_ARG_OVERRIDE_TENSOR=per_layer_token_embd=CPU,per_layer_model_proj=CPU")
         lazy="off"
+        [[ -z "$load_mode" ]] && load_mode="none"
     fi
     L+=("LLAMA_ARG_LAZY_MODE=$lazy")
+    [[ -n "$load_mode" ]] && L+=("LLAMA_ARG_LOAD_MODE=$load_mode")
 
     [[ "$CPU_MOE" == true ]] && L+=("LLAMA_ARG_CPU_MOE=true")
     [[ "${N_CPU_MOE:-0}" != 0 ]] && L+=("LLAMA_ARG_N_CPU_MOE=$N_CPU_MOE")
