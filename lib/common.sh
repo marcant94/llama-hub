@@ -135,6 +135,11 @@ _llama_grep_pat() {  # <patrón> [veto]  (lee de stdin)
     fi
 }
 
+# Carpeta por repo dentro de MODELS_DIR (evita colisiones entre modelos).
+llama_repo_slug() {  # <owner/repo> -> owner__repo
+    printf '%s' "$1" | sed 's|/|__|'
+}
+
 llama_local_matches() {  # <dir> <patrón> [veto] -> rutas locales ordenadas
     local dir="$1" pat="$2" veto="${3:-}"
     { find "$dir" -maxdepth 1 -type f -iname '*.gguf' 2>/dev/null || true; } \
@@ -159,14 +164,16 @@ llama_download() {  # <repo> <file> <dest>
 
 llama_ensure_file() {  # <repo> <patrón> [veto] -> ruta local (descarga si falta)
     local repo="$1" pat="$2" veto="${3:-}" hits file
-    if hits="$(llama_local_matches "$MODELS_DIR" "$pat" "$veto")" && [[ -n "$hits" ]]; then
+    # Cada repo tiene su propia subcarpeta: evita colisiones (p. ej. mmproj genéricos).
+    local dir="$MODELS_DIR/$(llama_repo_slug "$repo")"
+    if hits="$(llama_local_matches "$dir" "$pat" "$veto")" && [[ -n "$hits" ]]; then
         printf '%s\n' "$hits" | head -n1
         return 0
     fi
     if file="$(llama_remote_matches "$repo" "$pat" "$veto")" && [[ -n "$file" ]]; then
         file="$(printf '%s\n' "$file" | head -n1)"
-        llama_download "$repo" "$file" "$MODELS_DIR/$file"
-        printf '%s\n' "$MODELS_DIR/$file"
+        llama_download "$repo" "$file" "$dir/$file"
+        printf '%s\n' "$dir/$file"
         return 0
     fi
     return 1
@@ -308,7 +315,7 @@ llama_serve_model() {
         fi
     done
     [[ -n "$weights" ]] || die "no se encontró cuantización en: ${repos[*]} (probado: ${quants[*]})"
-    MODEL_PATH="/models/$(basename "$weights")"
+    MODEL_PATH="/models/${weights#"$MODELS_DIR"/}"
     info "pesos: $(basename "$weights")"
 
     # 2) Proyector multimodal (opcional).
@@ -317,7 +324,7 @@ llama_serve_model() {
         local mm
         for r in "${repos[@]}"; do
             if mm="$(llama_ensure_file "$r" "$MODEL_MMPROJ_PATTERN")"; then
-                MODEL_MMPROJ="/models/$(basename "$mm")"
+                MODEL_MMPROJ="/models/${mm#"$MODELS_DIR"/}"
                 info "mmproj: $(basename "$mm")"
                 break
             fi

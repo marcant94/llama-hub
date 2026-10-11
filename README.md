@@ -20,7 +20,9 @@ carpeta local visible.
 - **KV cache cuantizado a `q8_0`** para ahorrar VRAM con pérdida mínima.
 - Un **solo modelo activo a la vez** (contenedor fijo `llama-server`).
 - Red **`proxylan`** compartida para visibilidad entre tus proyectos locales.
-- Modelos en **`./models`** (bind mount), no en un volumen opaco de Docker.
+- Modelos en **`./models`** (bind mount), organizados en **una subcarpeta por repo**
+  (`owner__repo/`) para que no colisionen ficheros con nombres genéricos
+  (p. ej. `mmproj-BF16.gguf` de distintos modelos).
 
 ## Estructura
 
@@ -48,7 +50,7 @@ llama-hub/
 ├── lib/                           # NO se usa a mano: lógica interna (source de los otros)
 │   ├── backend.sh
 │   └── common.sh
-├── models/                        # GGUFs descargados (git-ignored)
+├── models/                        # GGUFs descargados, en subcarpeta por repo (git-ignored)
 └── .run/                          # entorno del contenedor generado (git-ignored)
 ```
 
@@ -131,6 +133,7 @@ Web UI en `http://localhost:8080/` y API OpenAI-compatible en
 | `MEM_LIMIT` | `0` | Límite de RAM del contenedor en bytes (`0` = sin límite). |
 | `CPUS` | `0` | Límite de CPUs (`0` = sin límite). |
 | `RESTART_POLICY` | `no` | `no` \| `unless-stopped` \| `always` \| `on-failure`. |
+| `HEALTH_START_PERIOD` | `300s` | Espera antes de contar fallos del healthcheck (evita `unhealthy` mientras carga el modelo). |
 | `MODELS_DIR` | `./models` | Carpeta local de los `.gguf` (relativa al repo, absoluta o con `~`). |
 | `HF_TOKEN` | *(vacío)* | Token de HuggingFace (solo repos gated/privados). |
 | `PLE_TO_RAM` | `true` | Desvía las tablas PLE (Gemma 4 E2B/E4B) a RAM. |
