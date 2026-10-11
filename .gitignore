@@ -5,6 +5,9 @@
 /models/*
 !/models/.gitkeep
 
+# Caché JIT de CUDA (bind mount ./.cache/nv).
+/.cache/
+
 # Estado generado en cada arranque (fichero de entorno del contenedor)
 /.run/*
 !/.run/.gitkeep

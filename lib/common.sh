@@ -57,6 +57,16 @@ esac
 # (el entorno del shell tiene prioridad sobre .env; así ~ también se respeta).
 export MODELS_DIR
 
+# Caché JIT de CUDA: persistente (bind mount) para no recompilar al recrear el contenedor.
+: "${CUDA_CACHE_DIR:=./.cache/nv}"
+CUDA_CACHE_DIR="${CUDA_CACHE_DIR/#\~/$HOME}"
+case "$CUDA_CACHE_DIR" in
+    /*) : ;;
+    *) CUDA_CACHE_DIR="$LLAMA_HUB_ROOT/${CUDA_CACHE_DIR#./}" ;;
+esac
+mkdir -p "$CUDA_CACHE_DIR"
+export CUDA_CACHE_DIR
+
 RUN_DIR="$LLAMA_HUB_ROOT/.run"
 MODEL_ENV_FILE="$RUN_DIR/model.env"
 

@@ -51,6 +51,7 @@ llama-hub/
 │   ├── backend.sh
 │   └── common.sh
 ├── models/                        # GGUFs descargados, en subcarpeta por repo (git-ignored)
+├── .cache/nv/                     # caché JIT de CUDA persistente (git-ignored)
 └── .run/                          # entorno del contenedor generado (git-ignored)
 ```
 
@@ -70,6 +71,7 @@ No ejecutas nada de `lib/` ni `compose/`; solo `serve/` y `bin/`.
 
 - **Docker** con el plugin `docker compose` (o `docker-compose`).
 - **curl** en el host.
+- **bash ≥ 4** en el host (para los arrays asociativos internos).
 - Red `proxylan` creada (`docker network create proxylan` si no la tienes).
 - Según el backend:
     - **NVIDIA**: `nvidia-container-toolkit`.
@@ -135,6 +137,7 @@ Web UI en `http://localhost:8080/` y API OpenAI-compatible en
 | `RESTART_POLICY` | `no` | `no` \| `unless-stopped` \| `always` \| `on-failure`. |
 | `HEALTH_START_PERIOD` | `300s` | Espera antes de contar fallos del healthcheck (evita `unhealthy` mientras carga el modelo). |
 | `MODELS_DIR` | `./models` | Carpeta local de los `.gguf` (relativa al repo, absoluta o con `~`). |
+| `CUDA_CACHE_DIR` | `./.cache/nv` | Caché JIT de CUDA persistente. Evita que la primera inferencia recompile kernels (~decenas de segundos) tras **recrear** el contenedor. |
 | `HF_TOKEN` | *(vacío)* | Token de HuggingFace (solo repos gated/privados). |
 | `PLE_TO_RAM` | `true` | Desvía las tablas PLE (Gemma 4 E2B/E4B) a RAM. |
 | `MMPROJ_TO_RAM` | `true` | Desvía el proyector multimodal a RAM. |

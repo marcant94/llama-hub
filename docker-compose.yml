@@ -19,6 +19,10 @@ services:
               required: false
         volumes:
             - ${MODELS_DIR:-./models}:/models:ro
+            # Caché JIT de CUDA persistente. Sin esto, al RECREAR el contenedor
+            # (docker rm + up) la caché se pierde y la 1ª inferencia recompila
+            # kernels ~decenas de segundos. Con restart/stop-start se conservaba.
+            - ${CUDA_CACHE_DIR:-./.cache/nv}:/root/.nv
         ports:
             - "${PORT:-8080}:8080"
         mem_limit: ${MEM_LIMIT:-0}
