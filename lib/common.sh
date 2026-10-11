@@ -46,11 +46,15 @@ fi
 : "${NVIDIA_VISIBLE_DEVICES:=all}"
 : "${AMD_RENDER_NODE:=/dev/dri}"
 
-# MODELS_DIR admite rutas relativas al repo o absolutas.
+# MODELS_DIR admite rutas relativas al repo, absolutas o con ~ al inicio.
+MODELS_DIR="${MODELS_DIR/#\~/$HOME}"
 case "$MODELS_DIR" in
     /*) : ;;
     *) MODELS_DIR="$LLAMA_HUB_ROOT/${MODELS_DIR#./}" ;;
 esac
+# Exportar la ruta resuelta para que docker compose la use en el bind mount
+# (el entorno del shell tiene prioridad sobre .env; así ~ también se respeta).
+export MODELS_DIR
 
 RUN_DIR="$LLAMA_HUB_ROOT/.run"
 MODEL_ENV_FILE="$RUN_DIR/model.env"
@@ -116,6 +120,11 @@ llama_hf_context_length() {  # <repo> -> n_ctx_train del GGUF (o vacío si no co
     return 0
 }
 
+# Escapa metacaracteres de regex para poder buscar el texto como literal.
+llama_regex_escape() {
+    printf '%s' "$1" | sed 's/[][\\.^$*+?(){}|]/\\&/g'
+}
+
 _llama_grep_pat() {  # <patrón> [veto]  (lee de stdin)
     local pat="$1" veto="${2:-}"
     if [[ -n "$veto" ]]; then
@@ -167,7 +176,8 @@ llama_pick_quant() {  # <repo> <patrón1> [patrón2 ...] -> ruta local del GGUF
     local q hit
     for q in "$@"; do
         [[ -n "$q" ]] || continue
-        if hit="$(llama_ensure_file "$repo" ".*${q}.*\.gguf" 'mmproj')"; then
+        # El patrón de cuantización se trata como literal (escapado) dentro del regex.
+        if hit="$(llama_ensure_file "$repo" ".*$(llama_regex_escape "$q").*\.gguf" 'mmproj')"; then
             printf '%s\n' "$hit"
             return 0
         fi
@@ -193,6 +203,7 @@ llama_compute_ctx() {
 
 llama_write_model_env() {
     mkdir -p "$RUN_DIR"
+    chmod 700 "$RUN_DIR" 2>/dev/null || true
     local -a L=()
 
     L+=("LLAMA_ARG_MODEL=$MODEL_PATH")
@@ -210,11 +221,16 @@ llama_write_model_env() {
     L+=("LLAMA_ARG_CACHE_TYPE_V=$CACHE_TYPE_V")
     L+=("LLAMA_ARG_FLASH_ATTN=$FLASH_ATTN")
     L+=("LLAMA_ARG_N_GPU_LAYERS=$N_GPU_LAYERS")
-    L+=("LLAMA_ARG_LAZY_MODE=$LAZY_MODE")
 
+    # PLE a RAM: además del -ot, forzamos lazy-mode=off para que las tablas
+    # queden residentes en memoria (RAM >> disco). Si no, con LAZY_MODE=auto/on
+    # llama.cpp las leería de disco bajo demanda, justo lo que se quiere evitar.
+    local lazy="$LAZY_MODE"
     if [[ "${PLE_MODEL:-false}" == true && "$PLE_TO_RAM" == true ]]; then
         L+=("LLAMA_ARG_OVERRIDE_TENSOR=per_layer_token_embd=CPU,per_layer_model_proj=CPU")
+        lazy="off"
     fi
+    L+=("LLAMA_ARG_LAZY_MODE=$lazy")
 
     [[ "$CPU_MOE" == true ]] && L+=("LLAMA_ARG_CPU_MOE=true")
     [[ "${N_CPU_MOE:-0}" != 0 ]] && L+=("LLAMA_ARG_N_CPU_MOE=$N_CPU_MOE")
@@ -227,6 +243,8 @@ llama_write_model_env() {
     fi
 
     printf '%s\n' "${L[@]}" > "$MODEL_ENV_FILE"
+    # El fichero puede contener una API key: restringir a solo el usuario.
+    chmod 600 "$MODEL_ENV_FILE" 2>/dev/null || true
     info "entorno del contenedor -> ${MODEL_ENV_FILE#"$LLAMA_HUB_ROOT"/}"
 }
 
@@ -250,8 +268,7 @@ llama_compose_down() {
     )
 }
 
-llama_summary() {  # <backend>
-    local backend="$1"
+llama_summary() {
     info "listo · web UI: http://localhost:${PORT}/ · API: http://localhost:${PORT}/v1"
     info "logs: ./bin/status.sh  |  parar: ./bin/stop.sh"
 }

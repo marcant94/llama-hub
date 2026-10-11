@@ -24,7 +24,9 @@ MODEL_MMPROJ_PATTERN="mmproj.*\.gguf"
 # ¿El modelo usa tablas PLE que conviene desviar a RAM? (sí para E2B/E4B)
 PLE_MODEL=true
 
-# Flags propios del modelo (líneas LLAMA_ARG_* extra)
+# Flags propios del modelo (líneas LLAMA_ARG_* extra).
+# Los valores de muestreo son los *defaults del servidor* para toda petición
+# que no especifique los suyos (el cliente puede sobrescribirlos por request).
 MODEL_ENV_EXTRA=(
     "LLAMA_ARG_TEMPERATURE=1.0"
     "LLAMA_ARG_TOP_K=64"

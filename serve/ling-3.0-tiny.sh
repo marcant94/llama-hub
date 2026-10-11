@@ -24,6 +24,9 @@ MODEL_MMPROJ_PATTERN=""
 # No usa PLE.
 PLE_MODEL=false
 
+# Flags propios del modelo (líneas LLAMA_ARG_* extra).
+# Aquí podrías fijar muestreo, p. ej. "LLAMA_ARG_TEMPERATURE=0.7"; serían los
+# *defaults del servidor* (el cliente puede sobrescribirlos por petición).
 MODEL_ENV_EXTRA=()
 
 llama_serve_model "$@"

@@ -131,7 +131,7 @@ Web UI en `http://localhost:8080/` y API OpenAI-compatible en
 | `MEM_LIMIT` | `0` | Límite de RAM del contenedor en bytes (`0` = sin límite). |
 | `CPUS` | `0` | Límite de CPUs (`0` = sin límite). |
 | `RESTART_POLICY` | `no` | `no` \| `unless-stopped` \| `always` \| `on-failure`. |
-| `MODELS_DIR` | `./models` | Carpeta local de los `.gguf` (relativa al repo o absoluta). |
+| `MODELS_DIR` | `./models` | Carpeta local de los `.gguf` (relativa al repo, absoluta o con `~`). |
 | `HF_TOKEN` | *(vacío)* | Token de HuggingFace (solo repos gated/privados). |
 | `PLE_TO_RAM` | `true` | Desvía las tablas PLE (Gemma 4 E2B/E4B) a RAM. |
 | `MMPROJ_TO_RAM` | `true` | Desvía el proyector multimodal a RAM. |
@@ -140,7 +140,7 @@ Web UI en `http://localhost:8080/` y API OpenAI-compatible en
 | `CACHE_TYPE_K` | `q8_0` | Tipo del KV cache (K). |
 | `CACHE_TYPE_V` | `q8_0` | Tipo del KV cache (V). |
 | `FLASH_ATTN` | `on` | `on` \| `off` \| `auto`. Requerido para KV cuantizado. |
-| `LAZY_MODE` | `off` | `on` \| `auto` \| `off`. Lectura de tensores grandes desde disco. |
+| `LAZY_MODE` | `off` | `on` \| `auto` \| `off`. Lectura de tensores grandes desde disco (forzado a `off` en modelos PLE con `PLE_TO_RAM=true`). |
 | `CPU_MOE` | `false` | `true` = todos los expertos MoE a CPU (opt-in). |
 | `N_CPU_MOE` | `0` | `N` > 0 = expertos de las primeras N capas a CPU (opt-in). |
 | `MOE_CACHE_MIB` | `0` | Caché en GPU (MiB) para expertos "calientes" con offload a CPU. |
@@ -178,7 +178,6 @@ MODEL_REPO="usuario/repo-GGUF"
 MODEL_QUANT="Q4_K_M"            # patrón preferido (o UD-Q4_K_XL, etc.)
 MODEL_QUANT_FALLBACK="Q5_K_M"   # opcional
 MODEL_MMPROJ_PATTERN=""          # p. ej. "mmproj.*\.gguf" si es multimodal
-MODEL_CTX_MAX=32768              # máximo real del modelo
 PLE_MODEL=false                  # true solo para Gemma 4 E2B/E4B
 MODEL_ENV_EXTRA=()               # líneas LLAMA_ARG_* extra
 
@@ -188,10 +187,10 @@ llama_serve_model "$@"
 Dale permisos de ejecución (`chmod +x serve/<tu-modelo>.sh`) y listo.
 
 El script resuelve el nombre exacto del fichero consultando la API de HuggingFace,
-así que no necesitas acertar con el nombre completo de la cuantización.
-, y **detecta
+así que no necesitas acertar con el nombre completo de la cuantización, y **detecta
 solo** el contexto máximo del modelo (metadatos GGUF). Si quisieras forzarlo, define
-`MODEL_CTX_MAX` en el propio script
+`MODEL_CTX_MAX` en el propio script.
+
 ## API
 
 - `GET /health` — estado.

@@ -2,18 +2,30 @@
 # =============================================================================
 # Descarga un fichero .gguf de HuggingFace a la carpeta de modelos.
 # Uso: ./bin/download.sh <repo> <patrón> [veto]
-#   <repo>    p. ej. unsloth/gemma-4-E4B-it-GGUF
-#   <patrón>  regex que debe aparecer en el nombre (p. ej. Q4_K_XL o mmproj)
-#   [veto]    regex que excluye coincidencias (p. ej. mmproj)
-# Ejemplos:
-#   ./bin/download.sh unsloth/gemma-4-E4B-it-GGUF UD-Q4_K_XL mmproj
-#   ./bin/download.sh unsloth/gemma-4-E4B-it-GGUF mmproj
 # =============================================================================
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
 
+usage() {
+    cat <<'EOF'
+Descarga un fichero .gguf de HuggingFace a la carpeta de modelos.
+
+Uso:
+  ./bin/download.sh <repo> <patrón> [veto]
+
+Argumentos:
+  <repo>     p. ej. unsloth/gemma-4-E4B-it-GGUF
+  <patrón>   regex que debe aparecer en el nombre (p. ej. Q4_K_XL o mmproj)
+  [veto]     regex que excluye coincidencias (p. ej. mmproj)
+
+Ejemplos:
+  ./bin/download.sh unsloth/gemma-4-E4B-it-GGUF UD-Q4_K_XL mmproj
+  ./bin/download.sh unsloth/gemma-4-E4B-it-GGUF mmproj
+EOF
+}
+
 if [[ $# -lt 2 ]]; then
-    sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
+    usage
     exit 1
 fi
 
