@@ -123,6 +123,10 @@ Web UI en `http://localhost:8080/` y API OpenAI-compatible en
 
 ## Variables de `.env`
 
+Todas son **opcionales** (tienen valor por defecto), así que el `.env` copiado tal cual
+—el `.env.example` solo deja `BACKEND` activo y el resto comentadas— ya funciona.
+Descomenta y ajusta solo las que necesites.
+
 | Variable | Por defecto | Descripción |
 |---|---|---|
 | `BACKEND` | `auto` | `auto` \| `cpu` \| `nvidia` \| `amd-vulkan` \| `amd-rocm` |
