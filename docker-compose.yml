@@ -1,0 +1,33 @@
+# =============================================================================
+# llama-hub — servicio base (modo CPU).
+#
+# Normalmente NO se arranca a mano: usa ./serve/<modelo>.sh, que combina este
+# fichero con el override del backend detectado, por ejemplo:
+#   docker compose -f docker-compose.yml -f compose/docker-compose.nvidia.yml up -d
+#
+# Los flags del modelo NO van aquí: se pasan al contenedor mediante el fichero
+# .run/model.env (variables nativas LLAMA_ARG_* que genera el script de modelo).
+# =============================================================================
+name: llama-hub
+
+services:
+    llama-server:
+        container_name: llama-server
+        image: ghcr.io/ggml-org/llama.cpp:server${LLAMA_SUFFIX:-}
+        env_file:
+            - path: ./.run/model.env
+              required: false
+        volumes:
+            - ${MODELS_DIR:-./models}:/models:ro
+        ports:
+            - "${PORT:-8080}:8080"
+        mem_limit: ${MEM_LIMIT:-0}
+        cpus: ${CPUS:-0}
+        restart: ${RESTART_POLICY:-no}
+        stop_grace_period: 20s
+
+# Red compartida por todos los proyectos del usuario (visibilidad local).
+networks:
+    default:
+        name: proxylan
+        external: true

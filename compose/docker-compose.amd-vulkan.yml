@@ -1,0 +1,18 @@
+# =============================================================================
+# llama-hub — override AMD/Intel vía Vulkan.
+# Camino genérico para GPUs AMD (incluidas las no soportadas por ROCm, como
+# Navi 2x) e iGPU Intel. Usa el nodo DRM del host.
+#   docker compose -f docker-compose.yml -f compose/docker-compose.amd-vulkan.yml up -d
+#
+# Nota: si tu host no tiene los grupos `video`/`render`, elimina `group_add`.
+# =============================================================================
+name: llama-hub
+
+services:
+    llama-server:
+        image: ghcr.io/ggml-org/llama.cpp:server-vulkan${LLAMA_SUFFIX:-}
+        devices:
+            - ${AMD_RENDER_NODE:-/dev/dri}:/dev/dri
+        group_add:
+            - video
+            - render

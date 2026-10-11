@@ -1,0 +1,13 @@
+# Configuración local (copia .env.example -> .env)
+.env
+
+# Modelos descargados (bind mount ./models). Se conserva la carpeta.
+/models/*
+!/models/.gitkeep
+
+# Estado generado en cada arranque (fichero de entorno del contenedor)
+/.run/*
+!/.run/.gitkeep
+
+# Descargas parciales de curl
+*.part

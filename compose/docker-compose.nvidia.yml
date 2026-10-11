@@ -1,0 +1,13 @@
+# =============================================================================
+# llama-hub — override NVIDIA (CUDA).
+# Requiere nvidia-container-toolkit en el host.
+#   docker compose -f docker-compose.yml -f compose/docker-compose.nvidia.yml up -d
+# =============================================================================
+name: llama-hub
+
+services:
+    llama-server:
+        image: ghcr.io/ggml-org/llama.cpp:server-cuda${LLAMA_SUFFIX:-}
+        runtime: nvidia
+        environment:
+            NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}

@@ -1,0 +1,10 @@
+# =============================================================================
+# llama-hub — override CPU (explícito).
+# Equivale al base; útil para forzar el modo CPU aunque haya GPU.
+#   docker compose -f docker-compose.yml -f compose/docker-compose.cpu.yml up -d
+# =============================================================================
+name: llama-hub
+
+services:
+    llama-server:
+        image: ghcr.io/ggml-org/llama.cpp:server${LLAMA_SUFFIX:-}

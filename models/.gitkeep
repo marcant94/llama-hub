@@ -1,0 +1,2 @@
+# Carpeta donde se descargan los modelos .gguf (bind mount ./models:/models).
+# El contenido se ignora en git salvo este fichero.

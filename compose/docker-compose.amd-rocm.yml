@@ -1,0 +1,19 @@
+# =============================================================================
+# llama-hub — override AMD nativo (ROCm).
+# Solo para GPUs soportadas oficialmente por ROCm (gfx90x/gfx94x/gfx110x...).
+# En GPUs no soportadas (p. ej. gfx1032) usa compose/docker-compose.amd-vulkan.yml.
+#   docker compose -f docker-compose.yml -f compose/docker-compose.amd-rocm.yml up -d
+#
+# Nota: si tu host no tiene los grupos `video`/`render`, elimina `group_add`.
+# =============================================================================
+name: llama-hub
+
+services:
+    llama-server:
+        image: ghcr.io/ggml-org/llama.cpp:server-rocm${LLAMA_SUFFIX:-}
+        devices:
+            - /dev/kfd:/dev/kfd
+            - ${AMD_RENDER_NODE:-/dev/dri}:/dev/dri
+        group_add:
+            - video
+            - render
