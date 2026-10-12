@@ -362,7 +362,7 @@ llama_serve_model() {
     if [[ -n "${MODEL_MTP_PATTERN:-}" ]]; then
         local mtp
         for r in "${repos[@]}"; do
-            if mtp="$(llama_ensure_file "$r" "$MODEL_MTP_PATTERN")"; then
+            if mtp="$(llama_ensure_file "$r" "$MODEL_MTP_PATTERN" "${MODEL_MTP_VETO:-}")"; then
                 MODEL_DRAFT_PATH="/models/${mtp#"$MODELS_DIR"/}"
                 MODEL_DRAFT_TYPE="draft-mtp"
                 info "drafter MTP: $(basename "$mtp")"

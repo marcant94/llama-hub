@@ -22,8 +22,12 @@ MODEL_QUANT="UD-Q4_K_XL"
 MODEL_MMPROJ_PATTERN="mmproj.*\.gguf"
 
 # Drafter MTP (speculative decoding del propio modelo; smart Q4_0 en la raíz
-# del repo, lo encuentra -hf automáticamente; aquí lo descargamos nosotros)
-MODEL_MTP_PATTERN="^mtp-gemma.*\.gguf$"
+# del repo, lo encuentra -hf automáticamente; aquí lo descargamos nosotros).
+# Sin anclar (^...$): find devuelve rutas completas y el ^ nunca casaría.
+# El veto excluye la carpeta MTP/ del repo (otras precisiones del drafter);
+# queremos el smart Q4_0 de la raíz.
+MODEL_MTP_PATTERN="mtp-gemma.*\.gguf"
+MODEL_MTP_VETO="^MTP/"
 # Longitud del draft (recomendado 4 para el MTP de Gemma 4, segun Unsloth)
 MODEL_SPEC_DRAFT_N_MAX=4
 
