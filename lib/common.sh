@@ -79,7 +79,7 @@ if [[ -t 1 ]]; then
 else
     _C_RST=''; _C_INF=''; _C_WRN=''; _C_ERR=''
 fi
-info() { printf '%s[llama-hub]%s %s\n' "$_C_INF" "$_C_RST" "$*"; }
+info() { printf '%s[llama-hub]%s %s\n' "$_C_INF" "$_C_RST" "$*" >&2; }
 warn() { printf '%s[llama-hub]%s %s\n' "$_C_WRN" "$_C_RST" "$*" >&2; }
 die()  { printf '%s[llama-hub]%s %s\n' "$_C_ERR" "$_C_RST" "$*" >&2; exit 1; }
 need_cmd() { command -v "$1" >/dev/null 2>&1 || die "falta el comando '$1'"; }
