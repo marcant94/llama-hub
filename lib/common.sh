@@ -41,6 +41,7 @@ fi
 : "${FLASH_ATTN:=on}"
 : "${LAZY_MODE:=off}"
 : "${LOAD_MODE:=}"
+: "${SPEC_NGRAM:=true}"
 : "${CPU_MOE:=false}"
 : "${N_CPU_MOE:=0}"
 : "${MOE_CACHE_MIB:=0}"
@@ -258,6 +259,18 @@ llama_write_model_env() {
     [[ "${N_CPU_MOE:-0}" != 0 ]] && L+=("LLAMA_ARG_N_CPU_MOE=$N_CPU_MOE")
     [[ "${MOE_CACHE_MIB:-0}" != 0 ]] && L+=("LLAMA_ARG_MOE_CACHE_MIB=$MOE_CACHE_MIB")
 
+    # Speculative decoding: drafter MTP (del propio modelo) o draft externo si el
+    # modelo lo define; si no, ngram-mod por defecto (ligero y seguro: el target
+    # verifica cada token, la salida no cambia).
+    if [[ -n "${MODEL_DRAFT_PATH:-}" ]]; then
+        L+=("LLAMA_ARG_SPEC_DRAFT_MODEL=$MODEL_DRAFT_PATH")
+        L+=("LLAMA_ARG_SPEC_TYPE=${MODEL_DRAFT_TYPE:-draft}")
+        L+=("LLAMA_ARG_SPEC_DRAFT_N_MAX=${MODEL_SPEC_DRAFT_N_MAX:-3}")
+        [[ -n "${MODEL_SPEC_DRAFT_NGL:-}" ]] && L+=("LLAMA_ARG_N_GPU_LAYERS_DRAFT=$MODEL_SPEC_DRAFT_NGL")
+    elif [[ "$SPEC_NGRAM" == true ]]; then
+        L+=("LLAMA_ARG_SPEC_TYPE=ngram-mod")
+    fi
+
     [[ -n "$API_KEY" ]] && L+=("LLAMA_API_KEY=$API_KEY")
 
     if [[ -n "${MODEL_ENV_EXTRA[*]:-}" ]]; then
@@ -341,6 +354,34 @@ llama_serve_model() {
         done
         [[ -n "$MODEL_MMPROJ" ]] || warn "no se encontró mmproj en ${repos[*]} (arranco sin multimodal)"
     fi
+
+    # 3) Draft para speculative decoding (opcional): MTP del propio modelo
+    #    (MODEL_MTP_PATTERN) o draft externo (MODEL_DRAFT_REPO).
+    MODEL_DRAFT_PATH=""
+    MODEL_DRAFT_TYPE=""
+    if [[ -n "${MODEL_MTP_PATTERN:-}" ]]; then
+        local mtp
+        for r in "${repos[@]}"; do
+            if mtp="$(llama_ensure_file "$r" "$MODEL_MTP_PATTERN")"; then
+                MODEL_DRAFT_PATH="/models/${mtp#"$MODELS_DIR"/}"
+                MODEL_DRAFT_TYPE="draft-mtp"
+                info "drafter MTP: $(basename "$mtp")"
+                break
+            fi
+        done
+        [[ -n "$MODEL_DRAFT_PATH" ]] || warn "no se encontró drafter MTP en ${repos[*]} (arranco sin draft)"
+    elif [[ -n "${MODEL_DRAFT_REPO:-}" ]]; then
+        local dr
+        if dr="$(llama_ensure_file "$MODEL_DRAFT_REPO" ".*$(llama_regex_escape "${MODEL_DRAFT_QUANT:-Q4_K_M}").*\.gguf")"; then
+            MODEL_DRAFT_PATH="/models/${dr#"$MODELS_DIR"/}"
+            MODEL_DRAFT_TYPE="draft"
+            info "draft externo: $(basename "$dr")"
+        else
+            warn "no se encontró draft en ${MODEL_DRAFT_REPO} (arranco sin draft)"
+        fi
+    fi
+
+    # 4) Contexto (máximo del modelo auto-detectado) + entorno + arranque.
 
     # 3) Contexto (máximo del modelo auto-detectado) + entorno + arranque.
     #    Se detecta del GGUF vía la API de HuggingFace; un MODEL_CTX_MAX definido en

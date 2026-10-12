@@ -49,6 +49,20 @@ Valores válidos de KV cache: `f32, f16, bf16, q8_0, q4_0, q4_1, iq4_nl, q5_0, q
 > `CTX_SIZE=0` se usa el nativo del modelo sin recortar. Un `MODEL_CTX_MAX` definido en
 > el script de modelo tiene prioridad sobre la detección.
 
+## Speculative decoding (drafting)
+
+| Variable | Flag | Qué hace | Dónde |
+|---|---|---|---|
+| `LLAMA_ARG_SPEC_TYPE` | `--spec-type` | Tipo de drafting: `draft` (draft externo), `draft-mtp` (MTP del propio modelo), `ngram-mod` (hash de n-gramas, ~16 MB). | generada |
+| `LLAMA_ARG_SPEC_DRAFT_MODEL` | `-md, --model-draft` | Fichero del draft model (o del drafter MTP). | generada |
+| `LLAMA_ARG_SPEC_DRAFT_N_MAX` | `--spec-draft-n-max` | Tokens a proponer por draft (default 3; MTP Gemma 4 usa 4). | `serve/*.sh` |
+| `LLAMA_ARG_N_GPU_LAYERS_DRAFT` | `-ngld, --n-gpu-layers-draft` | Capas del draft en VRAM (`0` = draft en CPU). | `serve/*.sh` |
+
+> El target **verifica** cada token draft: la salida es idéntica sin draft; la
+> ganancia depende de la tasa de aceptación. El MTP de Gemma 4 QAT (Unsloth) alcanza
+> ~0.45 de aceptación medido. Draft externo requiere mismo tokenizer (misma familia).
+> Con MoE el doc de llama.cpp recomienda drafts largos.
+
 ## Desvío a memoria (offload selectivo)
 
 | Variable | Flag | Qué hace | Dónde |

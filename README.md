@@ -40,6 +40,7 @@ llama-hub/
 ├── serve/                         # ← TÚ lo usas: un script por modelo
 │   ├── gemma-4-e2b.sh
 │   ├── gemma-4-e4b.sh
+│   ├── granite-4.0-h-tiny-draft.sh
 │   └── ling-3.0-tiny.sh
 ├── bin/                           # ← TÚ lo usas: utilidades (detect/download/list/status/stop)
 │   ├── detect-backend.sh
@@ -146,6 +147,7 @@ Descomenta y ajusta solo las que necesites.
 | `PLE_TO_RAM` | `true` | Desvía las tablas PLE (Gemma 4 E2B/E4B) a RAM. |
 | `MMPROJ_TO_RAM` | `true` | Desvía el proyector multimodal a RAM. |
 | `N_GPU_LAYERS` | `all` | Capas a VRAM: `N` \| `auto` \| `all`. |
+| `SPEC_NGRAM` | `true` | Drafting por n-gramas (`ngram-mod`) para modelos sin draft propio. Seguro: el target verifica cada token (la salida no cambia). Los modelos con MTP (Gemma4 QAT) usan `draft-mtp` en su lugar. |
 | `CTX_SIZE` | `32768` | Contexto preferido (`0` = nativo del modelo). |
 | `CACHE_TYPE_K` | `q8_0` | Tipo del KV cache (K). |
 | `CACHE_TYPE_V` | `q8_0` | Tipo del KV cache (V). |

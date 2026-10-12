@@ -10,16 +10,22 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
 MODEL_NAME="Gemma 4 E4B"
 
 # Identidad del modelo
+# QAT (Quantization-Aware Training): re-entrenado con cuantización simulada,
+# conserva calidad cercana a bf16 con ~5 GB. Incluye drafter MTP (~60 MB).
 MODEL_ALIAS="gemma-4-e4b"
-MODEL_REPO="unsloth/gemma-4-E4B-it-GGUF"
-MODEL_REPO_FALLBACK="bartowski/google_gemma-4-E4B-it-GGUF"
+MODEL_REPO="unsloth/gemma-4-E4B-it-qat-GGUF"
 
-# Cuantización preferida (orden de intento: patrón en el nombre del fichero)
+# Cuantización preferida (patrón en el nombre del fichero)
 MODEL_QUANT="UD-Q4_K_XL"
-MODEL_QUANT_FALLBACK="Q4_K_M"
 
 # Proyector multimodal (patrón del fichero mmproj dentro del repo)
 MODEL_MMPROJ_PATTERN="mmproj.*\.gguf"
+
+# Drafter MTP (speculative decoding del propio modelo; smart Q4_0 en la raíz
+# del repo, lo encuentra -hf automáticamente; aquí lo descargamos nosotros)
+MODEL_MTP_PATTERN="^mtp-gemma.*\.gguf$"
+# Longitud del draft (recomendado 4 para el MTP de Gemma 4, segun Unsloth)
+MODEL_SPEC_DRAFT_N_MAX=4
 
 # ¿El modelo usa tablas PLE que conviene desviar a RAM? (sí para E2B/E4B)
 PLE_MODEL=true
