@@ -48,6 +48,14 @@ fi
 : "${NVIDIA_VISIBLE_DEVICES:=all}"
 : "${AMD_RENDER_NODE:=/dev/dri}"
 
+# GID de los grupos `video`/`render` del HOST que los overrides AMD añaden al
+# contenedor vía `group_add`. Deben ser numéricos: Docker resuelve los nombres
+# contra el /etc/group de la IMAGEN, que no los tiene (o con otro GID). Si el
+# host no define el grupo, queda vacío (los overrides caen a 0, ya presente).
+: "${VIDEO_GID:=$(llama_host_gid video)}"
+: "${RENDER_GID:=$(llama_host_gid render)}"
+export VIDEO_GID RENDER_GID
+
 # MODELS_DIR admite rutas relativas al repo, absolutas o con ~ al inicio.
 MODELS_DIR="${MODELS_DIR/#\~/$HOME}"
 case "$MODELS_DIR" in

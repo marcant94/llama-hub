@@ -4,7 +4,9 @@
 # Navi 2x) e iGPU Intel. Usa el nodo DRM del host.
 #   docker compose -f docker-compose.yml -f compose/docker-compose.amd-vulkan.yml up -d
 #
-# Nota: si tu host no tiene los grupos `video`/`render`, elimina `group_add`.
+# `group_add` usa los GID numéricos del host (VIDEO_GID/RENDER_GID, resueltos por
+# lib/common.sh): Docker resuelve los nombres contra el /etc/group de la imagen,
+# que no trae `render`. Si el host no tiene el grupo, se cae a 0 (ya presente).
 # =============================================================================
 name: llama-hub
 
@@ -14,5 +16,5 @@ services:
         devices:
             - ${AMD_RENDER_NODE:-/dev/dri}:/dev/dri
         group_add:
-            - video
-            - render
+            - "${VIDEO_GID:-0}"
+            - "${RENDER_GID:-0}"

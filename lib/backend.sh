@@ -47,3 +47,18 @@ llama_resolve_backend() {
 llama_compose_file() {
     printf 'compose/docker-compose.%s.yml\n' "$1"
 }
+
+# llama_host_gid <grupo> -> GID numérico del grupo en el HOST (vacío si no existe).
+# Docker resuelve los *nombres* de `group_add` contra el /etc/group de la IMAGEN
+# (no el del host): la imagen llama.cpp no trae el grupo `render` y su `video` no
+# coincide con el del host. Por eso hay que pasar siempre GID numéricos.
+llama_host_gid() {  # <grupo>
+    local gid=""
+    if command -v getent >/dev/null 2>&1; then
+        gid="$(getent group "$1" 2>/dev/null | awk -F: 'NR==1{print $3}')" || gid=""
+    fi
+    if [[ -z "$gid" && -r /etc/group ]]; then
+        gid="$(awk -F: -v g="$1" '$1==g{print $3; exit}' /etc/group)" || gid=""
+    fi
+    printf '%s' "$gid"
+}

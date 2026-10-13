@@ -76,9 +76,9 @@ No ejecutas nada de `lib/` ni `compose/`; solo `serve/` y `bin/`.
 - Red `proxylan` creada (`docker network create proxylan` si no la tienes).
 - Según el backend:
     - **NVIDIA**: `nvidia-container-toolkit`.
-    - **AMD/Intel (Vulkan o ROCm)**: `/dev/dri` (y `/dev/kfd` para ROCm); grupos
-      `video` y `render`. Si tu host no tiene el grupo `render`, elimina el bloque
-      `group_add` del override correspondiente.
+    - **AMD/Intel (Vulkan o ROCm)**: `/dev/dri` (y `/dev/kfd` para ROCm). El script
+      detecta y añade automáticamente los grupos `video`/`render` del host; si tu
+      host no define `render`, no pasa nada (simplemente no se añade).
 
 ## Inicio rápido
 
@@ -105,8 +105,8 @@ Web UI en `http://localhost:8080/` y API OpenAI-compatible en
 |---|---|---|
 | `cpu` | `ghcr.io/ggml-org/llama.cpp:server` | — |
 | `nvidia` | `ghcr.io/ggml-org/llama.cpp:server-cuda` | `runtime: nvidia`, `NVIDIA_VISIBLE_DEVICES` |
-| `amd-vulkan` | `ghcr.io/ggml-org/llama.cpp:server-vulkan` | `/dev/dri`, grupos `video`/`render` |
-| `amd-rocm` | `ghcr.io/ggml-org/llama.cpp:server-rocm` | `/dev/kfd` + `/dev/dri`, grupos `video`/`render` |
+| `amd-vulkan` | `ghcr.io/ggml-org/llama.cpp:server-vulkan` | `/dev/dri`, grupos `video`/`render` (auto) |
+| `amd-rocm` | `ghcr.io/ggml-org/llama.cpp:server-rocm` | `/dev/kfd` + `/dev/dri`, grupos `video`/`render` (auto) |
 | `auto` | — | NVIDIA→`nvidia`, `/dev/dri`→`amd-vulkan`, si no→`cpu` |
 
 > `amd-rocm` hay que forzarlo: `auto` nunca lo elige (muchas GPUs AMD de consumo no
@@ -241,7 +241,10 @@ habrá modelo que cargar.
 ## Solución de problemas
 
 - **`network proxylan not found`** → `docker network create proxylan`.
-- **`unable to find group render`** (AMD) → elimina `group_add` del override AMD.
+- **`unable to find group render`** (AMD) → los grupos se añaden por GID numérico
+  del host (Docker resuelve los *nombres* contra el /etc/group de la imagen, que no
+  trae `render`). Actualiza tu copia del repo; si aun así fallara, fuerza el GID con
+  `RENDER_GID=$(getent group render | cut -d: -f3)` en el entorno o en `.env`.
 - **OOM de VRAM** → baja `N_GPU_LAYERS`, usa una cuantización menor o activa el
   offload de MoE a CPU (`N_CPU_MOE`).
 - **NVIDIA no acelera** → comprueba `nvidia-container-toolkit` y que `BACKEND=nvidia`.
