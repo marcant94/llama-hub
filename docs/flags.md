@@ -114,6 +114,12 @@ Valores válidos de KV cache: `f32, f16, bf16, q8_0, q4_0, q4_1, iq4_nl, q5_0, q
 | `LLAMA_ARG_REASONING` | `-rea, --reasoning` | `on`/`off`/`auto`: uso del modo "thinking". |
 | `LLAMA_ARG_REASONING_EFFORT` | `--reasoning-effort` | Nivel de esfuerzo de razonamiento. |
 
+> Solo algunos `serve/*.sh` fijan estos valores como *defaults del servidor* (el cliente
+> puede sobrescribirlos por petición): `gemma-4-e2b`/`gemma-4-e4b` (receta oficial de
+> Google: `temperature=1.0`, `top_k=64`, `top_p=0.95`) y `phi-4-mini-instruct`
+> (`temperature=0.0`, greedy) — receta oficial de Microsoft. `ling-3.0-tiny` y
+> `granite-4.0-h-tiny` no fijan nada y usan los defaults de llama.cpp.
+
 ---
 
 ## PLE (Per-Layer Embeddings) de Gemma 4 E2B/E4B

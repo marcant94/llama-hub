@@ -41,7 +41,8 @@ llama-hub/
 │   ├── gemma-4-e2b.sh
 │   ├── gemma-4-e4b.sh
 │   ├── granite-4.0-h-tiny.sh
-│   └── ling-3.0-tiny.sh
+│   ├── ling-3.0-tiny.sh
+│   └── phi-4-mini-instruct.sh
 ├── bin/                           # ← TÚ lo usas: utilidades (detect/download/list/status/stop)
 │   ├── detect-backend.sh
 │   ├── download.sh
