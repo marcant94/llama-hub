@@ -272,7 +272,7 @@ llama_write_model_env() {
     # verifica cada token, la salida no cambia).
     if [[ -n "${MODEL_DRAFT_PATH:-}" ]]; then
         L+=("LLAMA_ARG_SPEC_DRAFT_MODEL=$MODEL_DRAFT_PATH")
-        L+=("LLAMA_ARG_SPEC_TYPE=${MODEL_DRAFT_TYPE:-draft}")
+        L+=("LLAMA_ARG_SPEC_TYPE=${MODEL_DRAFT_TYPE:-draft-simple}")
         L+=("LLAMA_ARG_SPEC_DRAFT_N_MAX=${MODEL_SPEC_DRAFT_N_MAX:-3}")
         [[ -n "${MODEL_SPEC_DRAFT_NGL:-}" ]] && L+=("LLAMA_ARG_N_GPU_LAYERS_DRAFT=$MODEL_SPEC_DRAFT_NGL")
     elif [[ "$SPEC_NGRAM" == true ]]; then
@@ -382,7 +382,7 @@ llama_serve_model() {
         local dr
         if dr="$(llama_ensure_file "$MODEL_DRAFT_REPO" ".*$(llama_regex_escape "${MODEL_DRAFT_QUANT:-Q4_K_M}").*\.gguf")"; then
             MODEL_DRAFT_PATH="/models/${dr#"$MODELS_DIR"/}"
-            MODEL_DRAFT_TYPE="draft"
+            MODEL_DRAFT_TYPE="draft-simple"
             info "draft externo: $(basename "$dr")"
         else
             warn "no se encontró draft en ${MODEL_DRAFT_REPO} (arranco sin draft)"

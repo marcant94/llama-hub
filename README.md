@@ -40,7 +40,7 @@ llama-hub/
 ├── serve/                         # ← TÚ lo usas: un script por modelo
 │   ├── gemma-4-e2b.sh
 │   ├── gemma-4-e4b.sh
-│   ├── granite-4.0-h-tiny-draft.sh
+│   ├── granite-4.0-h-tiny.sh
 │   └── ling-3.0-tiny.sh
 ├── bin/                           # ← TÚ lo usas: utilidades (detect/download/list/status/stop)
 │   ├── detect-backend.sh
@@ -147,7 +147,7 @@ Descomenta y ajusta solo las que necesites.
 | `PLE_TO_RAM` | `true` | Desvía las tablas PLE (Gemma 4 E2B/E4B) a RAM. |
 | `MMPROJ_TO_RAM` | `true` | Desvía el proyector multimodal a RAM. |
 | `N_GPU_LAYERS` | `all` | Capas a VRAM: `N` \| `auto` \| `all`. |
-| `SPEC_NGRAM` | `true` | Drafting por n-gramas (`ngram-mod`) para modelos sin draft propio. Seguro: el target verifica cada token (la salida no cambia). Los modelos con MTP (Gemma4 QAT) usan `draft-mtp` en su lugar. |
+| `SPEC_NGRAM` | `true` | Drafting por n-gramas (`ngram-mod`), activo para **todos** los modelos. Medido en Vulkan: nunca más lento (Granite 44.5 → 44.5 en prosa y 44.8 → 122 en repetitivo; Gemma 52 → 56 y 52 → 130). Ojo: el drafting **puede cambiar la salida** respecto a sin draft; solo sin speculative es determinista. El **draft externo/MTP** sí se descarta: en híbridos es inviable (15 t/s en Granite) y el MTP de Gemma solo gana en código/repetitivo y pierde en prosa. |
 | `CTX_SIZE` | `32768` | Contexto preferido (`0` = nativo del modelo). |
 | `CACHE_TYPE_K` | `q8_0` | Tipo del KV cache (K). |
 | `CACHE_TYPE_V` | `q8_0` | Tipo del KV cache (V). |

@@ -53,15 +53,42 @@ Valores válidos de KV cache: `f32, f16, bf16, q8_0, q4_0, q4_1, iq4_nl, q5_0, q
 
 | Variable | Flag | Qué hace | Dónde |
 |---|---|---|---|
-| `LLAMA_ARG_SPEC_TYPE` | `--spec-type` | Tipo de drafting: `draft` (draft externo), `draft-mtp` (MTP del propio modelo), `ngram-mod` (hash de n-gramas, ~16 MB). | generada |
-| `LLAMA_ARG_SPEC_DRAFT_MODEL` | `-md, --model-draft` | Fichero del draft model (o del drafter MTP). | generada |
-| `LLAMA_ARG_SPEC_DRAFT_N_MAX` | `--spec-draft-n-max` | Tokens a proponer por draft (default 3; MTP Gemma 4 usa 4). | `serve/*.sh` |
-| `LLAMA_ARG_N_GPU_LAYERS_DRAFT` | `-ngld, --n-gpu-layers-draft` | Capas del draft en VRAM (`0` = draft en CPU). | `serve/*.sh` |
+| `LLAMA_ARG_SPEC_TYPE` | `--spec-type` | Tipo de drafting: `draft-simple` (draft externo), `draft-mtp` (MTP del propio modelo), `ngram-mod` (hash de n-gramas, ~16 MB). | generada |
+| `LLAMA_ARG_SPEC_DRAFT_MODEL` | `-md, --model-draft` | Fichero del draft model (o del drafter MTP). Ningún `serve/*.sh` lo usa por defecto. | opcional |
+| `LLAMA_ARG_SPEC_DRAFT_N_MAX` | `--spec-draft-n-max` | Tokens a proponer por draft (default 3). Solo con draft externo/MTP. | opcional |
+| `LLAMA_ARG_N_GPU_LAYERS_DRAFT` | `-ngld, --n-gpu-layers-draft` | Capas del draft en VRAM (`0` = draft en CPU). Solo con draft externo/MTP. | opcional |
 
-> El target **verifica** cada token draft: la salida es idéntica sin draft; la
-> ganancia depende de la tasa de aceptación. El MTP de Gemma 4 QAT (Unsloth) alcanza
-> ~0.45 de aceptación medido. Draft externo requiere mismo tokenizer (misma familia).
-> Con MoE el doc de llama.cpp recomienda drafts largos.
+> El target **verifica** cada token draft, así que la ganancia depende de la tasa de
+> aceptación. Draft externo requiere mismo tokenizer (misma familia). Con MoE el doc
+> de llama.cpp recomienda drafts largos.
+>
+> Medido en RX 6650 XT (Vulkan), Gemma 4 E4B, 150 tokens (máquina libre):
+>
+> | Prompt | `none` | `ngram-mod` | `draft-mtp` | `ngram-mod,draft-mtp` |
+> |---|---|---|---|---|
+> | Prosa | 52 | 56 | 40 | 45 |
+> | Código | 52 | 56 | 56 | 65 |
+> | Repetitivo | 52 | 130 | 93 | 197 |
+> | Resumen | 52 | 55 | 44 | 51 |
+>
+> `ngram-mod` no fue más lento en ningún caso; `draft-mtp` solo gana con aceptación
+> alta (código/repetitivo) y pierde en prosa. **Ningún modo de drafting garantiza una
+> salida idéntica a sin draft** (verificado por md5: solo `none` es determinista;
+> `ngram-mod` y `draft-mtp` divergen de forma reproducible). Por eso Gemma 4 usa
+> `ngram-mod`: más rápido aquí y sin modelo extra.
+>
+> **Draft externo en modelos híbridos/recurrentes (Mamba, p. ej. Granite 4.0 H):
+> no compensa.** El contexto no admite `seq_rm` parcial, así que cada aceptación
+> parcial obliga a restaurar un *checkpoint completo del estado recurrente*
+> (+ replay); con drafts cortos y aceptación mediocre eso ocurre casi en cada paso.
+> Medido en RX 6650 XT (Vulkan) con Granite 4.0 H: **15 t/s** con `draft-simple`
+> frente a ~45 t/s del target solo. El `ngram-mod` **no** paga ese coste (en prosa
+> no propone nada; en repetitivo acepta drafts largos enteros, sin rollback
+> parcial): 44.5 → 44.5 t/s en prosa y 44.8 → 121.8 t/s en repetitivo. Por eso
+> Granite usa `ngram-mod` (por defecto) y descarta el draft externo.
+>
+> Los números absolutos varían bastante entre sesiones (carga de CPU, temperatura):
+> compara siempre configs **intercaladas dentro de la misma tanda**.
 
 ## Desvío a memoria (offload selectivo)
 
