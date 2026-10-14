@@ -38,8 +38,7 @@ MODEL_MMPROJ_PATTERN=""
 #   MODEL_DRAFT_REPO="ibm-granite/granite-4.0-h-1b-GGUF"
 #   MODEL_DRAFT_QUANT="Q4_K_M"
 
-# Contexto maximo del modelo (max_position_embeddings del config)
-MODEL_CTX_MAX=131072
+# El contexto máximo se autodetecta de los metadatos GGUF (ver lib/common.sh).
 
 # No usa PLE
 PLE_MODEL=false
