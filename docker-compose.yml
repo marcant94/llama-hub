@@ -24,7 +24,7 @@ services:
             # kernels ~decenas de segundos. Con restart/stop-start se conservaba.
             - ${CUDA_CACHE_DIR:-./.cache/nv}:/root/.nv
         ports:
-            - "${PORT:-8080}:8080"
+            - "${PORT:-18080}:8080"
         mem_limit: ${MEM_LIMIT:-0}
         cpus: ${CPUS:-0}
         restart: ${RESTART_POLICY:-no}
