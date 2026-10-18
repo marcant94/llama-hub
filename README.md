@@ -16,7 +16,8 @@ carpeta local visible.
 - **Descarga automática** de pesos y `mmproj` desde HuggingFace (idempotente, con
   reanudación si se corta).
 - **Offload selectivo**: parte activa en VRAM, tablas **PLE** y **mmproj** en RAM,
-  expertos **MoE** en VRAM por defecto.
+  expertos **MoE** en VRAM por defecto y, en MoE que no caben, expertos en RAM con
+  **caché LRU de expertos calientes** en VRAM (`MOE_CACHE_MIB`).
 - **KV cache cuantizado a `q8_0`** para ahorrar VRAM con pérdida mínima.
 - Un **solo modelo activo a la vez** (contenedor fijo `llama-server`).
 - Red **`proxylan`** compartida para visibilidad entre tus proyectos locales.
@@ -38,11 +39,14 @@ llama-hub/
 ├── README.md
 ├── docs/flags.md                  # referencia de flags y variables
 ├── serve/                         # ← TÚ lo usas: un script por modelo
+│   ├── gemma-4-26b-a4b.sh         #   MoE grande: expertos en RAM + caché en VRAM
 │   ├── gemma-4-e2b.sh
 │   ├── gemma-4-e4b.sh
+│   ├── gpt-oss-20b.sh             #   MoE grande: expertos en RAM + caché en VRAM
 │   ├── granite-4.0-h-tiny.sh
 │   ├── ling-3.0-tiny.sh
-│   └── phi-4-mini-instruct.sh
+│   ├── phi-4-mini-instruct.sh
+│   └── qwen3-30b-a3b.sh           #   MoE grande: expertos en RAM + caché en VRAM
 ├── bin/                           # ← TÚ lo usas: utilidades (detect/download/list/status/stop)
 │   ├── detect-backend.sh
 │   ├── download.sh
@@ -97,8 +101,8 @@ Forzar un backend puntual:
 ./serve/gemma-4-e4b.sh vulkan     # o cpu | nvidia | amd-vulkan | amd-rocm
 ```
 
-Web UI en `http://localhost:8080/` y API OpenAI-compatible en
-`http://localhost:8080/v1`.
+Web UI en `http://localhost:18080/` y API OpenAI-compatible en
+`http://localhost:18080/v1` (el puerto se cambia con `PORT` en `.env`).
 
 ## Backends
 
@@ -136,7 +140,7 @@ Descomenta y ajusta solo las que necesites.
 | `NVIDIA_VISIBLE_DEVICES` | `all` | GPUs NVIDIA visibles en el contenedor. |
 | `AMD_RENDER_NODE` | `/dev/dri` | Nodo DRM del host mapeado a `/dev/dri`. |
 | `LLAMA_HOST` | `0.0.0.0` | IP de escucha **dentro** del contenedor. |
-| `PORT` | `8080` | Puerto publicado en el host. |
+| `PORT` | `18080` | Puerto publicado en el host (el contenedor escucha en 8080 dentro). |
 | `API_KEY` | *(vacío)* | API key opcional (vacío = sin auth). |
 | `MEM_LIMIT` | `0` | Límite de RAM del contenedor en bytes (`0` = sin límite). |
 | `CPUS` | `0` | Límite de CPUs (`0` = sin límite). |
@@ -154,10 +158,13 @@ Descomenta y ajusta solo las que necesites.
 | `CACHE_TYPE_V` | `q8_0` | Tipo del KV cache (V). |
 | `FLASH_ATTN` | `on` | `on` \| `off` \| `auto`. Requerido para KV cuantizado. |
 | `LAZY_MODE` | `off` | `on` \| `auto` \| `off`. Lectura de tensores grandes desde disco (forzado a `off` en modelos PLE con `PLE_TO_RAM=true`). |
-| `LOAD_MODE` | *(vacío)* | `auto` \| `none` \| `mmap` \| `mlock` \| `mmap+mlock` \| `dio`. Vacío = `auto`. Con `PLE_TO_RAM=true` se usa `none` automáticamente (evita la penalización de `-ot` con mmap). |
-| `CPU_MOE` | `false` | `true` = todos los expertos MoE a CPU (opt-in). |
-| `N_CPU_MOE` | `0` | `N` > 0 = expertos de las primeras N capas a CPU (opt-in). |
-| `MOE_CACHE_MIB` | `0` | Caché en GPU (MiB) para expertos "calientes" con offload a CPU. |
+| `LOAD_MODE` | *(vacío)* | `auto` \| `none` \| `mmap` \| `mlock` \| `mmap+mlock` \| `dio`. Vacío = `auto`. `none` = leer a RAM sin mmap (evita la penalización de `-ot` a CPU con mmap); con `PLE_TO_RAM=true` se usa `none` automáticamente. **En Vulkan/AMD `none` manda los pesos a GTT, no a RAM normal** (ver [docs/flags.md](docs/flags.md)). |
+| `CPU_MOE` | `false` | `true` = todos los expertos MoE a RAM (opt-in). |
+| `N_CPU_MOE` | `0` | `N` > 0 = expertos de las primeras N capas a RAM (opt-in). |
+| `MOE_CACHE_MIB` | `0` | Caché de expertos "calientes" en VRAM (MiB). **Solo actúa junto con `CPU_MOE`/`N_CPU_MOE`** (si los expertos ya están en VRAM no hay nada que cachear). |
+| `MODEL_CPU_MOE` | — | Default de `CPU_MOE` para un modelo concreto (`serve/*.sh`). El `.env` sigue mandando si tiene otro valor. |
+| `MODEL_N_CPU_MOE` | — | Default de `N_CPU_MOE` para un modelo concreto (`serve/*.sh`). |
+| `MODEL_MOE_CACHE_MIB` | — | Default de `MOE_CACHE_MIB` para un modelo concreto (`serve/*.sh`). |
 
 > **Contexto**: el máximo del modelo (`n_ctx_train`) se **detecta automáticamente** de
 > los metadatos GGUF (API de HuggingFace) y el contexto efectivo es
@@ -176,8 +183,18 @@ Detalle de cada flag de llama.cpp equivalente en [`docs/flags.md`](docs/flags.md
   y usa `--load-mode none` (evita la penalización de los overrides a CPU con mmap)
   para que la tabla quede **residente en RAM** (RAM ≫ disco).
 - **mmproj → RAM**: `MMPROJ_TO_RAM=true` añade `--no-mmproj-offload`.
-- **MoE → VRAM** por defecto. Si no te cabe el modelo, activa `N_CPU_MOE` (o
-  `CPU_MOE`) y opcionalmente `MOE_CACHE_MIB`; sopesa la pérdida de velocidad.
+- **MoE → VRAM** por defecto. Si el modelo no cabe, hay dos escalones:
+    - `N_CPU_MOE=N` → expertos de las **primeras N capas** a RAM (así el resto
+      siguen en VRAM, que es lo más rápido).
+    - `CPU_MOE=true` → **todos** los expertos a RAM.
+- **MoE grande + `MOE_CACHE_MIB`** (la receta de `serve/gemma-4-26b-a4b.sh`,
+  `serve/gpt-oss-20b.sh` y `serve/qwen3-30b-a3b.sh`): con los expertos en RAM,
+  `MOE_CACHE_MIB=N` reserva N MiB de VRAM para una **caché LRU de expertos**: los
+  pares (capa, experto) más usados se quedan residentes y los fríos se desalojan,
+  subiéndose por PCIe solo cuando se necesitan. La generación (≤32 tokens) es la
+  única que actualiza ese LRU, así que un prompt largo **no** desaloja los expertos
+  calientes del chat. Dimensionado: `denso + KV + MOE_CACHE_MIB + buffers ≈ VRAM`,
+  teniendo en cuenta que el **pico** (prefill) es ~0,4 GB mayor que la media.
 
 ## Añadir un modelo
 
@@ -194,6 +211,9 @@ MODEL_QUANT="Q4_K_M"            # patrón preferido (o UD-Q4_K_XL, etc.)
 MODEL_QUANT_FALLBACK="Q5_K_M"   # opcional
 MODEL_MMPROJ_PATTERN=""          # p. ej. "mmproj.*\.gguf" si es multimodal
 PLE_MODEL=false                  # true solo para Gemma 4 E2B/E4B
+MODEL_CPU_MOE=true               # opcional: todos los expertos a RAM (MoE grande)
+MODEL_MOE_CACHE_MIB=3800         # opcional: caché LRU de expertos en VRAM (MiB)
+MODEL_CTX_MAX=32768              # opcional: tope de contexto (protege la VRAM)
 MODEL_ENV_EXTRA=()               # líneas LLAMA_ARG_* extra
 
 llama_serve_model "$@"
@@ -206,6 +226,11 @@ así que no necesitas acertar con el nombre completo de la cuantización, y **de
 solo** el contexto máximo del modelo (metadatos GGUF). Si quisieras forzarlo, define
 `MODEL_CTX_MAX` en el propio script.
 
+`MODEL_CPU_MOE`, `MODEL_N_CPU_MOE` y `MODEL_MOE_CACHE_MIB` son solo **defaults del
+modelo**: si defines `CPU_MOE`, `N_CPU_MOE` o `MOE_CACHE_MIB` en el `.env`, esos
+valores tienen prioridad. Mira `serve/gemma-4-26b-a4b.sh` como ejemplo con las
+cuentas de VRAM comentadas.
+
 ## API
 
 - `GET /health` — estado.
@@ -217,7 +242,7 @@ solo** el contexto máximo del modelo (metadatos GGUF). Si quisieras forzarlo, d
 Ejemplo:
 
 ```bash
-curl -s http://localhost:8080/v1/chat/completions \
+curl -s http://localhost:18080/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{"model":"gemma-4-e4b","messages":[{"role":"user","content":"Hola"}]}'
 ```
@@ -246,8 +271,20 @@ habrá modelo que cargar.
   del host (Docker resuelve los *nombres* contra el /etc/group de la imagen, que no
   trae `render`). Actualiza tu copia del repo; si aun así fallara, fuerza el GID con
   `RENDER_GID=$(getent group render | cut -d: -f3)` en el entorno o en `.env`.
-- **OOM de VRAM** → baja `N_GPU_LAYERS`, usa una cuantización menor o activa el
-  offload de MoE a CPU (`N_CPU_MOE`).
+- **OOM de VRAM** → baja `N_GPU_LAYERS`, usa una cuantización menor, activa el
+  offload de MoE a RAM (`N_CPU_MOE`) o baja `MOE_CACHE_MIB` (es lo que más VRAM
+  consume cuando está activo).
+- **Saber si el caché de expertos acierta** → `llama-server` **no** imprime ese
+  informe (su logger lo descarta). Usa las herramientas del contenedor con `-lv 4`,
+  que sí lo vuelcan al terminar: `llama completion`, `cli`, `perplexity` o
+  `batched-bench` (con `-cmoe`/`-ncmoe` y `--moe-cache-mib`). Ejemplo y salida real
+  medida en [`docs/flags.md`](docs/flags.md).
+- **La RAM no sube aunque el modelo es enorme** → normal con `mmap`: el GGUF no se
+  copia a RAM, se mapea, y sus páginas quedan en la **caché de páginas** (`free` →
+  `búf/caché`). Medido aquí: 17,1 GB residentes y 0,1 MB de disco por generación. Ojo
+  si usas `LOAD_MODE=none` para "verla": en **Vulkan/AMD** eso manda los pesos a
+  **GTT** (tope ~la mitad de la RAM), así que un MoE de 17 GB no cabe y el contenedor
+  muere con `device lost`. Detalles medidos en [`docs/flags.md`](docs/flags.md).
 - **NVIDIA no acelera** → comprueba `nvidia-container-toolkit` y que `BACKEND=nvidia`.
 - **MMProj a RAM y quieres velocidad** → pon `MMPROJ_TO_RAM=false`.
 - **Sin GPU** → `BACKEND=cpu` (o deja `auto` sin `/dev/dri` ni NVIDIA).

@@ -25,7 +25,7 @@ fi
 : "${BACKEND:=auto}"
 : "${MODELS_DIR:=$LLAMA_HUB_ROOT/models}"
 : "${LLAMA_HOST:=0.0.0.0}"
-: "${PORT:=8080}"
+: "${PORT:=18080}"
 : "${LLAMA_SUFFIX:=}"
 : "${API_KEY:=}"
 : "${MEM_LIMIT:=0}"
@@ -233,6 +233,23 @@ llama_write_model_env() {
     chmod 700 "$RUN_DIR" 2>/dev/null || true
     local -a L=()
 
+    # Defaults de MoE por modelo (los define serve/*.sh). Solo se aplican si el
+    # .env no ha fijado un valor propio, así que el .env sigue teniendo la última
+    # palabra: basta con poner otro valor ahí para sobreescribirlos.
+    if [[ "$CPU_MOE" == false && "${MODEL_CPU_MOE:-false}" == true ]]; then
+        CPU_MOE=true
+    fi
+    [[ "$N_CPU_MOE" == 0 && -n "${MODEL_N_CPU_MOE:-}" ]] && N_CPU_MOE="$MODEL_N_CPU_MOE"
+    [[ "$MOE_CACHE_MIB" == 0 && -n "${MODEL_MOE_CACHE_MIB:-}" ]] && MOE_CACHE_MIB="$MODEL_MOE_CACHE_MIB"
+
+    # La caché de expertos se llena con expertos que están en RAM: sin offload de
+    # MoE no tiene nada que cachear, así que avisamos en vez de arrancar en silencio.
+    if [[ "$MOE_CACHE_MIB" != 0 && "$CPU_MOE" != true && "$N_CPU_MOE" == 0 ]]; then
+        warn "MOE_CACHE_MIB=$MOE_CACHE_MIB sin CPU_MOE/N_CPU_MOE: no tiene efecto (los expertos ya están en VRAM)"
+    elif [[ "$MOE_CACHE_MIB" != 0 ]]; then
+        info "MoE: expertos en RAM + caché de expertos calientes de ${MOE_CACHE_MIB} MiB en VRAM"
+    fi
+
     L+=("LLAMA_ARG_MODEL=$MODEL_PATH")
     [[ -n "${MODEL_ALIAS:-}" ]] && L+=("LLAMA_ARG_ALIAS=$MODEL_ALIAS")
 
@@ -254,6 +271,7 @@ llama_write_model_env() {
     # llama.cpp las leería de disco bajo demanda, justo lo que se quiere evitar.
     # Los overrides a CPU no se llevan bien con mmap: usamos --load-mode none
     # (salvo que el usuario fije LOAD_MODE) para evitar la penalización.
+    # LOAD_MODE vacío = auto (mmap).
     local lazy="$LAZY_MODE" load_mode="$LOAD_MODE"
     if [[ "${PLE_MODEL:-false}" == true && "$PLE_TO_RAM" == true ]]; then
         L+=("LLAMA_ARG_OVERRIDE_TENSOR=per_layer_token_embd=CPU,per_layer_model_proj=CPU")
